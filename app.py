@@ -33,7 +33,7 @@ def shorten(request: URLRequest, db : Session = Depends(get_db)) -> dict:
     entry = URL(code=code, destination=str(request.url), api_key=hash_api_key(api_key))
     db.add(entry)
     db.commit()
-    return {"short_url": f"http://localhost:8000/{code}", "api_key": api_key}
+    return {"short_url": f"https://urlshorten-14j6.onrender.com/{code}", "api_key": api_key}
 
 @app.delete("/delete/{code}")
 def delete(code: str, x_api_key: str = Header(), db : Session = Depends(get_db)):
