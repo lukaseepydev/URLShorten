@@ -30,7 +30,7 @@ def verify_rapidapi(
 ):
     if x_admin_key and x_admin_key == ADMIN_KEY:
         return "admin"  # bypass RapidAPI check
-    if not x_rapidapi_proxy_secret or rapidapi_proxy_secret != RAPIDAPI_SECRET:
+    if not x_rapidapi_proxy_secret or x_rapidapi_proxy_secret != RAPIDAPI_SECRET:
         raise HTTPException(status_code=403, detail="Unauthorized")
     return x_rapidapi_user
 
