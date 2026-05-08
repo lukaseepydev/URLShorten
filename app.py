@@ -65,6 +65,8 @@ def preview(code: str, db : Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=404, detail="Link not found")
     return {"code": entry.code, "destination": entry.destination, "created_at": entry.created_at}
 
+app.include_router(api)
+
 @app.get("/{code}")
 def redirect(code: str, db : Session = Depends(get_db)):
     entry = db.query(URL).filter(URL.code == code).first()
@@ -72,5 +74,3 @@ def redirect(code: str, db : Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Link not found")
     return RedirectResponse(entry.destination)
 
-
-app.include_router(api)
