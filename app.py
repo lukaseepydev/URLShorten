@@ -37,6 +37,13 @@ def verify_rapidapi(
 def make_code() -> str:
     return "".join(random.choices(string.ascii_letters + string.digits, k=6))
 
+@app.get("/debug-env")
+def debug_env():
+    return {
+        "rapidapi_secret_set": bool(RAPIDAPI_SECRET),
+        "rapidapi_secret_length": len(RAPIDAPI_SECRET) if RAPIDAPI_SECRET else 0,
+        "admin_key_set": bool(ADMIN_KEY)
+    }
 
 @app.get("/debug-headers")
 def debug(request: Request):
