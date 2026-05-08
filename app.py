@@ -38,6 +38,10 @@ def make_code() -> str:
     return "".join(random.choices(string.ascii_letters + string.digits, k=6))
 
 
+@app.get("/debug-headers")
+def debug(request: Request):
+    return dict(request.headers)
+
 @api.post("/shorten")
 def shorten(request: URLRequest, db : Session = Depends(get_db), rapidapi_user: str = Depends(verify_rapidapi)) -> dict:
     code = make_code()
