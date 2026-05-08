@@ -4,11 +4,18 @@ from pydantic import BaseModel, HttpUrl
 from sqlalchemy.orm import Session
 import random, string, secrets, bcrypt
 from fastapi.routing import APIRouter
+import os
+from dotenv import load_dotenv
 
 from database import Base, engine, get_db
 from models import URL
 
+load_dotenv()
+
 Base.metadata.create_all(bind=engine)
+
+RAPIDAPI_SECRET = os.getenv("RAPIDAPI_SECRET")
+ADMIN_KEY = os.getenv("ADMIN_KEY")
 
 app = FastAPI()
 api = APIRouter(prefix="/api")
@@ -16,39 +23,42 @@ api = APIRouter(prefix="/api")
 class URLRequest(BaseModel):
     url: HttpUrl
 
+def verify_rapidapi(
+    x_rapidapi_proxy_secret: str = Header(alias="x-rapidapi-proxy-secret", default=None),
+    x_rapidapi_user: str = Header(alias="x-rapidapi-user", default=None),
+    x_admin_key: str = Header(alias="x-admin-key", default=None)
+):
+    if x_admin_key and x_admin_key == ADMIN_KEY:
+        return "admin"  # bypass RapidAPI check
+    if not x_rapidapi_proxy_secret or rapidapi_proxy_secret != RAPIDAPI_SECRET:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return x_rapidapi_user
+
 def make_code() -> str:
     return "".join(random.choices(string.ascii_letters + string.digits, k=6))
 
-def make_api_key():
-    return secrets.token_urlsafe(32)
-
-def hash_api_key(api_key: str) -> str:
-    return bcrypt.hashpw(api_key.encode(), bcrypt.gensalt()).decode()
-
-def verify_api_key(api_key: str, hashed: str) -> bool:
-    return bcrypt.checkpw(api_key.encode(), hashed.encode())
 
 @api.post("/shorten")
-def shorten(request: URLRequest, db : Session = Depends(get_db)) -> dict:
+def shorten(request: URLRequest, db : Session = Depends(get_db), rapidapi_user: str = Depends(verify_rapidapi)) -> dict:
     code = make_code()
-    api_key = make_api_key()
-    entry = URL(code=code, destination=str(request.url), api_key=hash_api_key(api_key))
+    user = rapidapi_user
+    entry = URL(code=code, destination=str(request.url), rapidapi_user=user)
     db.add(entry)
     db.commit()
-    return {"short_url": f"https://www.eepyshort.de/{code}", "api_key": api_key}
+    return {"short_url": f"https://www.eepyshort.de/{code}"}
 
 @api.delete("/delete/{code}")
-def delete(code: str, x_api_key: str = Header(), db : Session = Depends(get_db)):
+def delete(code: str, db : Session = Depends(get_db), rapidapi_user: str = Depends(verify_rapidapi)):
     entry = db.query(URL).filter(URL.code == code).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Link not found")
-    if not verify_api_key(x_api_key, entry.api_key):
-        raise HTTPException(status_code=403, detail="Invalid API key")
+    if rapidapi_user != entry.rapidapi_user:
+        raise HTTPException(status_code=403, detail="Unauthorized")
     db.delete(entry)
     db.commit()
     return {"message": f"Redirect {code} succesfully deleted"}
 
-@api.get("/preview/{code}")
+@app.get("/preview/{code}")
 def preview(code: str, db : Session = Depends(get_db)) -> dict:
     entry = db.query(URL).filter(URL.code == code).first()
     if not entry:

@@ -7,6 +7,6 @@ class URL(Base):
     
     code = Column(String, primary_key=True, index=True)
     destination = Column(String, nullable=False)
-    api_key = Column(String, nullable=False)
+    rapidapi_user = Column(String, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
