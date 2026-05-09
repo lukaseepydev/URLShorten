@@ -53,7 +53,7 @@ def debug(request: Request):
 def shorten(request: URLRequest, db : Session = Depends(get_db), rapidapi_user: str = Depends(verify_rapidapi)) -> dict:
     code = make_code()
     user = rapidapi_user
-    entry = URL(code=code, destination=str(request.url), rapidapi_user=user)
+    entry = URL(code=code, destination=str(request.url), rapidapi_user=user, clicks=0)
     db.add(entry)
     db.commit()
     return {"short_url": f"https://www.eepyshort.de/{code}"}
@@ -69,12 +69,27 @@ def delete(code: str, db : Session = Depends(get_db), rapidapi_user: str = Depen
     db.commit()
     return {"message": f"Redirect {code} succesfully deleted"}
 
+@api.get("/info/{code}")
+def info(code: str, db: Session = Depends(get_db), rapidapi_user: str = Depends(verify_rapidapi)):
+    entry = db.query(URL).filter(URL.code == code).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Link not found")
+    if rapidapi_user != entry.rapidapi_user:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return {"code": entry.code,
+            "destination": entry.destination,
+            "clicks": entry.clicks,
+            "created_by": entry.rapidapi_user,
+            "created_at": entry.created_at
+    }
+    
+
 @app.get("/preview/{code}")
 def preview(code: str, db : Session = Depends(get_db)) -> dict:
     entry = db.query(URL).filter(URL.code == code).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Link not found")
-    return {"code": entry.code, "destination": entry.destination, "created_at": entry.created_at}
+    return {"code": entry.code, "destination": entry.destination, "created_by": entry.rapidapi_user, "created_at": entry.created_at}
 
 app.include_router(api)
 
@@ -83,5 +98,7 @@ def redirect(code: str, db : Session = Depends(get_db)):
     entry = db.query(URL).filter(URL.code == code).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Link not found")
+    entry.clicks += 1
+    db.commit()
     return RedirectResponse(entry.destination)
 
