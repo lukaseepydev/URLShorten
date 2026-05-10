@@ -37,6 +37,7 @@ def verify_rapidapi(
 def make_code() -> str:
     return "".join(random.choices(string.ascii_letters + string.digits, k=6))
 
+
 @api.post("/shorten")
 def shorten(request: URLRequest, db : Session = Depends(get_db), rapidapi_user: str = Depends(verify_rapidapi)) -> dict:
     code = make_code()
@@ -71,6 +72,9 @@ def info(code: str, db: Session = Depends(get_db), rapidapi_user: str = Depends(
             "created_at": entry.created_at
     }
     
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 @app.get("/preview/{code}")
 def preview(code: str, db : Session = Depends(get_db)) -> dict:
