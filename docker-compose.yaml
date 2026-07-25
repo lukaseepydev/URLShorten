@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shortener
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: shortener
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    command: >
+      postgres
+      -c shared_buffers=384MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=96MB
+      -c max_connections=50
+      -c work_mem=4MB
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://shortener:${DB_PASSWORD}@postgres:5432/shortener
+    depends_on:
+      - postgres
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  pgdata:
